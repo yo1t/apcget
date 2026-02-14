@@ -3,19 +3,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/v/release/yo1t/apcget?label=GitHub)](https://github.com/yo1t/apcget)
 
-APC PowerChute Serial Shutdown for Business の Web インターフェースから UPS ステータスを取得するスクリプト。
+A Python script to retrieve UPS status from the APC PowerChute Serial Shutdown for Business web interface.
 
 https://github.com/yo1t/apcget
 
-Python 標準ライブラリのみで動作し、外部パッケージのインストールは不要。
+[日本語版 README はこちら](README.ja.md)
 
-## 必要環境
+No external packages required — runs on Python standard library only.
+
+## Requirements
 
 - Python 3.6+
-- APC PowerChute Serial Shutdown for Business (ポート 6547)
-- Zabbix連携を使う場合: `zabbix_sender`
+- APC PowerChute Serial Shutdown for Business (port 6547)
+- For Zabbix integration: `zabbix_sender`
 
-### zabbix_sender のインストール
+### Installing zabbix_sender
 
 ```bash
 # RHEL / Amazon Linux
@@ -28,48 +30,48 @@ sudo apt install zabbix-sender
 brew install zabbix
 ```
 
-## 使い方
+## Usage
 
 ```bash
-python3 apcget.py [IPアドレス] [ユーザ名] [パスワード] [オプション]
+python3 apcget.py [IP_ADDRESS] [USERNAME] [PASSWORD] [OPTIONS]
 ```
 
-認証情報はコマンドライン引数のほか、環境変数・設定ファイルでも指定できる（後述）。
+Credentials can also be provided via environment variables or a config file (see below).
 
-### 基本（UPS負荷のみ取得）
+### Basic (get UPS load only)
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password
-# 出力例: 19.0
+# Output: 19.0
 ```
 
-### 項目を指定して取得
+### Specify items to retrieve
 
 ```bash
-# バッテリー充電率
+# Battery charge
 python3 apcget.py 192.168.1.100 administrator password --battery
 
-# 複数項目（スペース区切りで出力）
+# Multiple items (space-separated output)
 python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltage
-# 出力例: 19.0 29 102.0
+# Output: 19.0 29 102.0
 ```
 
-### 取得可能な項目
+### Available items
 
-| オプション | 内容 | 出力例 |
+| Option | Description | Example |
 |---|---|---|
-| `--status` | デバイスステータス | オンライン |
-| `--load` | UPS負荷 (%) | 19.0 |
-| `--runtime` | ランタイム残り時間 (分) | 29 |
-| `--voltage` | 入力電圧 (VAC) | 102.0 |
-| `--battery` | バッテリー充電 (%) | 100.0 |
-| `--batteryvoltage` | バッテリー電圧 (VDC) | 13.7 |
+| `--status` | Device status | Online |
+| `--load` | UPS load (%) | 19.0 |
+| `--runtime` | Runtime remaining (min) | 29 |
+| `--voltage` | Input voltage (VAC) | 102.0 |
+| `--battery` | Battery charge (%) | 100.0 |
+| `--batteryvoltage` | Battery voltage (VDC) | 13.7 |
 
-オプション未指定の場合は `--load` がデフォルト。出力に単位（%, VAC等）は含まれない。
+Defaults to `--load` if no option is specified. Units (%, VAC, etc.) are not included in the output.
 
-## Zabbix 連携
+## Zabbix Integration
 
-`--zabbix-send` オプションで全6項目を `zabbix_sender` 経由で一括送信できる。
+The `--zabbix-send` option sends all 6 items at once via `zabbix_sender`.
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password \
@@ -77,38 +79,38 @@ python3 apcget.py 192.168.1.100 administrator password \
   --zabbix-host MyUPS
 ```
 
-| オプション | 説明 | デフォルト |
+| Option | Description | Default |
 |---|---|---|
-| `--zabbix-send` | Zabbixサーバーのアドレス | (なし) |
-| `--zabbix-host` | Zabbix上のホスト名 | IPアドレス |
-| `--zabbix-port` | Zabbixサーバーのポート | 10051 |
+| `--zabbix-send` | Zabbix server address | (none) |
+| `--zabbix-host` | Host name in Zabbix | IP address |
+| `--zabbix-port` | Zabbix server port | 10051 |
 
-### Zabbix側の設定
+### Zabbix Configuration
 
-対象ホストに以下の **Zabbix トラッパー** アイテムを作成する。
+Create the following **Zabbix trapper** items on the target host:
 
-| キー | データ型 | 内容 |
+| Key | Type | Description |
 |---|---|---|
-| `apc.status` | 文字列 | デバイスステータス |
-| `apc.load` | 数値(浮動小数) | UPS負荷 |
-| `apc.runtime` | 数値(整数) | ランタイム残り時間 |
-| `apc.voltage` | 数値(浮動小数) | 入力電圧 |
-| `apc.battery` | 数値(浮動小数) | バッテリー充電 |
-| `apc.batteryvoltage` | 数値(浮動小数) | バッテリー電圧 |
+| `apc.status` | Text | Device status |
+| `apc.load` | Numeric (float) | UPS load |
+| `apc.runtime` | Numeric (integer) | Runtime remaining |
+| `apc.voltage` | Numeric (float) | Input voltage |
+| `apc.battery` | Numeric (float) | Battery charge |
+| `apc.batteryvoltage` | Numeric (float) | Battery voltage |
 
-### cron 設定例
+### cron Example
 
 ```cron
 * * * * * /usr/bin/python3 /path/to/apcget.py --config /path/to/.apcget.conf --zabbix-send 127.0.0.1 --zabbix-host ups-host >/dev/null 2>&1
 ```
 
-## 認証情報の管理
+## Credential Management
 
-認証情報は以下の優先順で解決される。コマンドライン引数にパスワードを書かずに運用できる。
+Credentials are resolved in the following priority order, allowing password-free command lines:
 
-**優先順位**: コマンドライン引数 > 環境変数 > 設定ファイル
+**Priority**: Command-line arguments > Environment variables > Config file
 
-### 設定ファイル (`~/.apcget.conf`)
+### Config File (`~/.apcget.conf`)
 
 ```ini
 [powerchute]
@@ -118,26 +120,26 @@ password = your_password
 ```
 
 ```bash
-# 設定ファイルのみで実行（引数不要）
+# Run with config file only (no arguments needed)
 python3 apcget.py
 
-# パスを指定する場合
+# Specify a custom config path
 python3 apcget.py --config /etc/apcget.conf
 ```
 
-設定ファイルのパーミッションは所有者のみ読み取り可にすることを推奨:
+Set file permissions to owner-only read:
 
 ```bash
 chmod 600 ~/.apcget.conf
 ```
 
-### 環境変数
+### Environment Variables
 
-| 変数名 | 内容 |
+| Variable | Description |
 |---|---|
-| `APCGET_IP` | PowerChuteのIPアドレス |
-| `APCGET_USERNAME` | ログインユーザ名 |
-| `APCGET_PASSWORD` | ログインパスワード |
+| `APCGET_IP` | PowerChute IP address |
+| `APCGET_USERNAME` | Login username |
+| `APCGET_PASSWORD` | Login password |
 
 ```bash
 export APCGET_IP=192.168.1.100
@@ -146,16 +148,16 @@ export APCGET_PASSWORD='your_password'
 python3 apcget.py
 ```
 
-### セキュリティに関する注意
+### Security Notes
 
-- コマンドライン引数にパスワードを直接指定すると `ps` コマンドやシェル履歴から閲覧される可能性がある。設定ファイルまたは環境変数の利用を推奨
-- PowerChuteは自己署名証明書を使用するため、SSL証明書の検証を無効化している
-- 設定ファイルには `chmod 600` を設定し、他ユーザーから読み取れないようにする
+- Passing passwords as command-line arguments exposes them via `ps` and shell history. Use a config file or environment variables instead
+- SSL certificate verification is disabled because PowerChute uses a self-signed certificate
+- Set `chmod 600` on config files to prevent other users from reading them
 
-## 動作確認済み環境
+## Tested Environment
 
 - APC PowerChute Serial Shutdown for Business v1.4.0.601
 - UPS: APC RS 550S
 - Python 3.9 / 3.10
-- Zabbix 7.4 (トラッパー連携)
+- Zabbix 7.4 (trapper integration)
 - Amazon Linux 2023 / macOS
