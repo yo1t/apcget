@@ -154,6 +154,10 @@ python3 apcget.py
 - SSL certificate verification is disabled because PowerChute uses a self-signed certificate
 - Set `chmod 600` on config files to prevent other users from reading them
 
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind. Use at your own risk. The authors are not responsible for any damage, data loss, or other issues arising from the use of this software. This tool is not affiliated with or endorsed by Schneider Electric or APC.
+
 ## Tested Environment
 
 - APC PowerChute Serial Shutdown for Business v1.4.0.601
