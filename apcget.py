@@ -160,12 +160,40 @@ def logoff(opener, base_url):
         pass
 
 
+def _sanitize_zabbix_value(value):
+    """zabbix_senderに渡す値から不正な文字を除去"""
+    if not isinstance(value, str):
+        value = str(value)
+    value = value.replace("\n", "").replace("\r", "")
+    if not value:
+        return None
+    return value
+
+
+def _sanitize_zabbix_host(hostname):
+    """zabbix_senderに渡すホスト名を検証"""
+    if not re.match(r'^[\w.\-]+$', hostname):
+        print(f"Error: 不正なZabbixホスト名です: {hostname}", file=sys.stderr)
+        sys.exit(1)
+    return hostname
+
+
 def zabbix_send(zabbix_server, zabbix_host, all_values, zabbix_port=10051):
     """zabbix_senderで全項目を一括送信"""
+    zabbix_host = _sanitize_zabbix_host(zabbix_host)
     lines = []
     for name, value in all_values.items():
         key = ZABBIX_KEYS[name]
-        lines.append(f"{zabbix_host} {key} {value}")
+        sanitized = _sanitize_zabbix_value(value)
+        if sanitized is None:
+            print(f"Warning: {name} の値が空です。スキップします。", file=sys.stderr)
+            continue
+        lines.append(f"{zabbix_host} {key} {sanitized}")
+
+    if not lines:
+        print("Error: 送信可能な項目がありません。", file=sys.stderr)
+        sys.exit(1)
+
     sender_data = "\n".join(lines) + "\n"
 
     cmd = [
