@@ -15,7 +15,10 @@ No external packages required — runs on Python standard library only.
 
 - Python 3.6+
 - APC PowerChute Serial Shutdown for Business (port 6547)
-- For Zabbix integration: `zabbix_sender`
+
+### Optional
+
+- `zabbix_sender` — required only when using the `--zabbix-send` option
 
 ### Installing zabbix_sender
 

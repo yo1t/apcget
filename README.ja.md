@@ -15,7 +15,10 @@ https://github.com/yo1t/apcget
 
 - Python 3.6+
 - APC PowerChute Serial Shutdown for Business（ポート 6547）
-- Zabbix 連携を使用する場合: `zabbix_sender`
+
+### オプション
+
+- `zabbix_sender` — `--zabbix-send` オプション使用時のみ必要
 
 ### zabbix_sender のインストール
 
