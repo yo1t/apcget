@@ -215,6 +215,35 @@ def zabbix_send(zabbix_server, zabbix_host, all_values, zabbix_port=10051):
     print(result.stdout.strip(), file=sys.stderr)
 
 
+def mqtt_publish(mqtt_broker, mqtt_topic, all_values, mqtt_port=1883,
+                 mqtt_user=None, mqtt_password=None):
+    """mosquitto_pubで全項目をMQTTブローカーに送信"""
+    payload = json.dumps(all_values)
+
+    cmd = [
+        "mosquitto_pub",
+        "-h", mqtt_broker,
+        "-p", str(mqtt_port),
+        "-t", mqtt_topic,
+        "-m", payload,
+    ]
+
+    if mqtt_user:
+        cmd.extend(["-u", mqtt_user])
+    if mqtt_password:
+        cmd.extend(["-P", mqtt_password])
+
+    result = subprocess.run(
+        cmd, capture_output=True, text=True
+    )
+
+    if result.returncode != 0:
+        print(f"Error: mosquitto_pub failed: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"MQTT published to {mqtt_topic}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="APC PowerChute Serial Shutdown for Business からUPSステータスを取得",
@@ -282,6 +311,17 @@ Zabbix連携 (トラッパー):
     parser.add_argument("--batteryvoltage", action="store_true", help="バッテリー電圧")
     parser.add_argument("--json", action="store_true",
                         help="全項目をJSON形式で出力")
+    parser.add_argument("--mqtt-send", metavar="MQTT_BROKER",
+                        help="MQTTブローカーのアドレス（指定すると全項目をmosquitto_pubで送信）")
+    parser.add_argument("--mqtt-topic", metavar="TOPIC",
+                        default="apcget/ups",
+                        help="MQTTトピック（デフォルト: apcget/ups）")
+    parser.add_argument("--mqtt-port", type=int, default=1883,
+                        help="MQTTブローカーのポート（デフォルト: 1883）")
+    parser.add_argument("--mqtt-user", metavar="USERNAME",
+                        help="MQTT認証ユーザ名")
+    parser.add_argument("--mqtt-password", metavar="PASSWORD",
+                        help="MQTT認証パスワード")
     parser.add_argument("--zabbix-send", metavar="ZABBIX_SERVER",
                         help="Zabbixサーバーのアドレス（指定すると全項目をzabbix_senderで送信）")
     parser.add_argument("--zabbix-host", metavar="HOSTNAME",
@@ -305,8 +345,8 @@ Zabbix連携 (トラッパー):
         login(opener, opener_noredir, base_url, username, password)
         html = get_status_page(opener, base_url)
 
-        if args.zabbix_send or args.json:
-            # 全項目取得モード（Zabbix送信 or JSON出力）
+        if args.zabbix_send or args.mqtt_send or args.json:
+            # 全項目取得モード（Zabbix送信 / MQTT送信 / JSON出力）
             all_values = {}
             for name, element_id in ITEMS.items():
                 value = extract_value(html, element_id)
@@ -321,6 +361,9 @@ Zabbix連携 (トラッパー):
 
             if args.json:
                 print(json.dumps(all_values))
+            elif args.mqtt_send:
+                mqtt_publish(args.mqtt_send, args.mqtt_topic, all_values,
+                             args.mqtt_port, args.mqtt_user, args.mqtt_password)
             else:
                 zabbix_host = args.zabbix_host or ip
                 zabbix_send(args.zabbix_send, zabbix_host, all_values, args.zabbix_port)
