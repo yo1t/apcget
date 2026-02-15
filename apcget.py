@@ -390,10 +390,10 @@ Zabbix連携 (トラッパー):
 
             if args.json:
                 print(json.dumps(all_values))
-            elif args.mqtt_send:
+            if args.mqtt_send:
                 mqtt_publish(args.mqtt_send, args.mqtt_topic, all_values,
                              args.mqtt_port, args.mqtt_user, args.mqtt_password)
-            else:
+            if args.zabbix_send:
                 zabbix_host = args.zabbix_host or ip
                 zabbix_send(args.zabbix_send, zabbix_host, all_values, args.zabbix_port)
         else:
