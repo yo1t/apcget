@@ -46,10 +46,12 @@ python3 apcget.py [IPアドレス] [ユーザ名] [パスワード] [オプシ�
 
 認証情報は環境変数や設定ファイルでも指定できます（後述）。
 
+> `ユーザ名` と `パスワード` は PowerChute で設定した認証情報です（OS のユーザではありません）。
+
 ### 基本（UPS負荷のみ取得）
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password
+python3 apcget.py 192.168.1.100 your_username your_password
 # 出力: 19.0
 ```
 
@@ -57,10 +59,10 @@ python3 apcget.py 192.168.1.100 administrator password
 
 ```bash
 # バッテリー充電率
-python3 apcget.py 192.168.1.100 administrator password --battery
+python3 apcget.py 192.168.1.100 your_username your_password --battery
 
 # 複数項目（スペース区切りで出力）
-python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltage
+python3 apcget.py 192.168.1.100 your_username your_password --load --runtime --voltage
 # 出力: 19.0 29 102.0
 ```
 
@@ -82,7 +84,7 @@ python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltag
 `--json` オプションで全項目を JSON 形式で出力します。Home Assistant やスクリプトとの連携に便利です。
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password --json
+python3 apcget.py 192.168.1.100 your_username your_password --json
 # 出力: {"status": "オンライン", "load": "19.0", "runtime": "29", "voltage": "102.0", "battery": "100.0", "batteryvoltage": "13.7"}
 ```
 
@@ -91,7 +93,7 @@ python3 apcget.py 192.168.1.100 administrator password --json
 `--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに送信します。`mosquitto_pub` または `paho-mqtt` のいずれかが必要です。`mosquitto_pub` が利用可能な場合は優先的に使用し、なければ `paho-mqtt` にフォールバックします。
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password \
+python3 apcget.py 192.168.1.100 your_username your_password \
   --mqtt-send 192.168.1.200 \
   --mqtt-topic apcget/my-ups    # トピック名は任意の文字列を指定可能
 ```
@@ -141,7 +143,7 @@ mqtt:
 `--zabbix-send` オプションで全 6 項目を `zabbix_sender` で一括送信します。
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password \
+python3 apcget.py 192.168.1.100 your_username your_password \
   --zabbix-send 10.0.0.1 \
   --zabbix-host MyUPS
 ```
@@ -182,7 +184,7 @@ python3 apcget.py 192.168.1.100 administrator password \
 ```ini
 [powerchute]
 ip = 192.168.1.100
-username = administrator
+username = your_username
 password = your_password
 ```
 
@@ -210,7 +212,7 @@ chmod 600 ~/.apcget.conf
 
 ```bash
 export APCGET_IP=192.168.1.100
-export APCGET_USERNAME=administrator
+export APCGET_USERNAME=your_username
 export APCGET_PASSWORD='your_password'
 python3 apcget.py
 ```

@@ -46,10 +46,12 @@ python3 apcget.py [IP_ADDRESS] [USERNAME] [PASSWORD] [OPTIONS]
 
 Credentials can also be provided via environment variables or a config file (see below).
 
+> `USERNAME` and `PASSWORD` are the credentials you configured in PowerChute (not OS credentials).
+
 ### Basic (get UPS load only)
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password
+python3 apcget.py 192.168.1.100 your_username your_password
 # Output: 19.0
 ```
 
@@ -57,10 +59,10 @@ python3 apcget.py 192.168.1.100 administrator password
 
 ```bash
 # Battery charge
-python3 apcget.py 192.168.1.100 administrator password --battery
+python3 apcget.py 192.168.1.100 your_username your_password --battery
 
 # Multiple items (space-separated output)
-python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltage
+python3 apcget.py 192.168.1.100 your_username your_password --load --runtime --voltage
 # Output: 19.0 29 102.0
 ```
 
@@ -82,7 +84,7 @@ Defaults to `--load` if no option is specified. Units (%, VAC, etc.) are not inc
 The `--json` option outputs all items as JSON. Useful for integration with Home Assistant, scripts, etc.
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password --json
+python3 apcget.py 192.168.1.100 your_username your_password --json
 # Output: {"status": "Online", "load": "19.0", "runtime": "29", "voltage": "102.0", "battery": "100.0", "batteryvoltage": "13.7"}
 ```
 
@@ -91,7 +93,7 @@ python3 apcget.py 192.168.1.100 administrator password --json
 The `--mqtt-send` option publishes all items as JSON to an MQTT broker. Either `mosquitto_pub` or `paho-mqtt` is required (install one). `mosquitto_pub` is used if available; otherwise it falls back to `paho-mqtt`.
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password \
+python3 apcget.py 192.168.1.100 your_username your_password \
   --mqtt-send 192.168.1.200 \
   --mqtt-topic apcget/my-ups    # topic name can be any string you like
 ```
@@ -141,7 +143,7 @@ mqtt:
 The `--zabbix-send` option sends all 6 items at once via `zabbix_sender`.
 
 ```bash
-python3 apcget.py 192.168.1.100 administrator password \
+python3 apcget.py 192.168.1.100 your_username your_password \
   --zabbix-send 10.0.0.1 \
   --zabbix-host MyUPS
 ```
@@ -182,7 +184,7 @@ Credentials are resolved in the following priority order, allowing password-free
 ```ini
 [powerchute]
 ip = 192.168.1.100
-username = administrator
+username = your_username
 password = your_password
 ```
 
@@ -210,7 +212,7 @@ chmod 600 ~/.apcget.conf
 
 ```bash
 export APCGET_IP=192.168.1.100
-export APCGET_USERNAME=administrator
+export APCGET_USERNAME=your_username
 export APCGET_PASSWORD='your_password'
 python3 apcget.py
 ```
