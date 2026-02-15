@@ -93,17 +93,45 @@ def create_openers():
     return opener, opener_noredir
 
 
+def _is_status_page(html):
+    """ステータスページかどうかを判定（言語非依存）"""
+    return "value_DeviceStatus" in html
+
+
+def _is_already_logged_on(html):
+    """「既にログオン中」メッセージの判定（言語非依存）"""
+    return "alreadyLoggedOn" in html and ("already logged" in html.lower() or "既にログオン" in html)
+
+
+def _detect_locale(html):
+    """HTMLからcurrentロケールを検出"""
+    match = re.search(r'<html\s+lang="([^"]+)"', html)
+    return match.group(1) if match else None
+
+
+def _set_locale(opener, base_url, locale):
+    """PowerChuteの表示言語を変更"""
+    data = urllib.parse.urlencode({
+        "newLocale": locale,
+        "targetURL": "/status",
+    }).encode("utf-8")
+    req = urllib.request.Request(f"{base_url}/setLocale", data=data)
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    resp = opener.open(req, timeout=HTTP_TIMEOUT)
+    return resp.read().decode("utf-8", errors="replace")
+
+
 def login(opener, opener_noredir, base_url, username, password):
     """PowerChute Serial Shutdown for Businessにログイン（Java EE form-based auth）"""
     resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
     html = resp.read().decode("utf-8", errors="replace")
 
-    if "既にログオン" in html or "already logged" in html.lower():
+    if _is_already_logged_on(html):
         opener.open(f"{base_url}/logoff", timeout=HTTP_TIMEOUT)
         resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
         html = resp.read().decode("utf-8", errors="replace")
 
-    if "UPSステータス" in html or "UPS Status" in html:
+    if _is_status_page(html):
         return
 
     ft_match = re.search(r'name="formtoken"[^>]*value="([^"]+)"', html)
@@ -111,10 +139,13 @@ def login(opener, opener_noredir, base_url, username, password):
     formtoken = ft_match.group(1) if ft_match else ""
     formtokenid = fti_match.group(1) if fti_match else ""
 
+    login_match = re.search(r'name="login"[^>]*value="([^"]+)"', html)
+    login_value = login_match.group(1) if login_match else "Log On"
+
     data = urllib.parse.urlencode({
         "j_username": username,
         "j_password": password,
-        "login": "ログオン",
+        "login": login_value,
         "formtoken": formtoken,
         "formtokenid": formtokenid,
     }).encode("utf-8")
@@ -132,12 +163,33 @@ def login(opener, opener_noredir, base_url, username, password):
             sys.exit(1)
 
 
+def ensure_english(opener, base_url):
+    """表示言語が英語でなければ英語に切り替え、元のロケールを返す"""
+    resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
+    html = resp.read().decode("utf-8", errors="replace")
+    current_locale = _detect_locale(html)
+
+    if current_locale and current_locale != "en":
+        _set_locale(opener, base_url, "en")
+        return current_locale
+    return None
+
+
+def restore_locale(opener, base_url, original_locale):
+    """元の表示言語に戻す"""
+    if original_locale:
+        try:
+            _set_locale(opener, base_url, original_locale)
+        except Exception:
+            pass
+
+
 def get_status_page(opener, base_url):
     """statusページのHTMLを取得"""
     resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
     html = resp.read().decode("utf-8", errors="replace")
 
-    if "/logon" in resp.geturl() and "UPSステータス" not in html:
+    if "/logon" in resp.geturl() and not _is_status_page(html):
         print("Error: セッションが無効です。ログインに失敗した可能性があります。", file=sys.stderr)
         sys.exit(1)
 
@@ -368,8 +420,10 @@ def main():
     base_url = f"https://{ip}:6547"
     opener, opener_noredir = create_openers()
 
+    original_locale = None
     try:
         login(opener, opener_noredir, base_url, username, password)
+        original_locale = ensure_english(opener, base_url)
         html = get_status_page(opener, base_url)
 
         if args.zabbix_send or args.mqtt_send or args.json:
@@ -410,6 +464,7 @@ def main():
 
             print(" ".join(values))
     finally:
+        restore_locale(opener, base_url, original_locale)
         logoff(opener, base_url)
 
 
