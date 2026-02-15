@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/v/release/yo1t/apcget?label=GitHub)](https://github.com/yo1t/apcget)
 
-A Python script to retrieve UPS status from the APC PowerChute Serial Shutdown for Business web interface.
+A Python script to retrieve UPS status from the APC PowerChute Serial Shutdown for Business web interface. Supports command-line output, JSON, MQTT (Home Assistant), and Zabbix trapper integration.
 
 https://github.com/yo1t/apcget
 

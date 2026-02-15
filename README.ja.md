@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/v/release/yo1t/apcget?label=GitHub)](https://github.com/yo1t/apcget)
 
-APC PowerChute Serial Shutdown for Business の Web インターフェースから UPS ステータスを取得する Python スクリプトです。
+APC PowerChute Serial Shutdown for Business の Web インターフェースから UPS ステータスを取得する Python スクリプトです。コマンドライン出力のほか、JSON、MQTT（Home Assistant）、Zabbix トラッパー連携に対応しています。
 
 https://github.com/yo1t/apcget
 
