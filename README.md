@@ -29,10 +29,13 @@ sudo dnf install zabbix-sender      # RHEL / Amazon Linux
 sudo apt install zabbix-sender       # Ubuntu / Debian
 brew install zabbix                  # macOS (Homebrew)
 
-# mosquitto_pub
+# mosquitto_pub (either mosquitto_pub or paho-mqtt — install one)
 sudo dnf install mosquitto           # RHEL / Amazon Linux
 sudo apt install mosquitto-clients   # Ubuntu / Debian
 brew install mosquitto               # macOS (Homebrew)
+
+# paho-mqtt (alternative to mosquitto_pub)
+pip3 install paho-mqtt
 ```
 
 ## Usage
@@ -85,50 +88,50 @@ python3 apcget.py 192.168.1.100 administrator password --json
 
 ## MQTT Integration
 
-The `--mqtt-send` option publishes all items as JSON to an MQTT broker via `mosquitto_pub`. If `mosquitto_pub` is not available, it falls back to the `paho-mqtt` Python package (`pip3 install paho-mqtt`).
+The `--mqtt-send` option publishes all items as JSON to an MQTT broker. Either `mosquitto_pub` or `paho-mqtt` is required (install one). `mosquitto_pub` is used if available; otherwise it falls back to `paho-mqtt`.
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password \
   --mqtt-send 192.168.1.200 \
-  --mqtt-topic apcget/ups-living
+  --mqtt-topic apcget/my-ups    # topic name can be any string you like
 ```
 
 | Option | Description | Default |
 |---|---|---|
 | `--mqtt-send` | MQTT broker address | (none) |
-| `--mqtt-topic` | MQTT topic | apcget/ups |
+| `--mqtt-topic` | MQTT topic (e.g. `apcget/ups-living`, `apcget/ups-office`) | apcget/ups |
 | `--mqtt-port` | MQTT broker port | 1883 |
 | `--mqtt-user` | MQTT username | (none) |
 | `--mqtt-password` | MQTT password | (none) |
 
 ### Home Assistant Configuration
 
-Add MQTT sensors to `configuration.yaml`:
+Add MQTT sensors to `configuration.yaml` (replace the topic with the one you chose above):
 
 ```yaml
 mqtt:
   sensor:
     - name: "UPS Load"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"       # match your --mqtt-topic
       value_template: "{{ value_json.load }}"
       unit_of_measurement: "%"
     - name: "UPS Battery"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.battery }}"
       unit_of_measurement: "%"
     - name: "UPS Runtime"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.runtime }}"
       unit_of_measurement: "min"
     - name: "UPS Status"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.status }}"
     - name: "UPS Voltage"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.voltage }}"
       unit_of_measurement: "VAC"
     - name: "UPS Battery Voltage"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.batteryvoltage }}"
       unit_of_measurement: "VDC"
 ```

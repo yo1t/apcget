@@ -29,10 +29,13 @@ sudo dnf install zabbix-sender      # RHEL / Amazon Linux
 sudo apt install zabbix-sender       # Ubuntu / Debian
 brew install zabbix                  # macOS (Homebrew)
 
-# mosquitto_pub
+# mosquitto_pub（mosquitto_pub か paho-mqtt のいずれかをインストール）
 sudo dnf install mosquitto           # RHEL / Amazon Linux
 sudo apt install mosquitto-clients   # Ubuntu / Debian
 brew install mosquitto               # macOS (Homebrew)
+
+# paho-mqtt（mosquitto_pub の代替）
+pip3 install paho-mqtt
 ```
 
 ## 使い方
@@ -85,50 +88,50 @@ python3 apcget.py 192.168.1.100 administrator password --json
 
 ## MQTT 連携
 
-`--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに送信します。`mosquitto_pub` コマンドを優先的に使用し、利用できない場合は `paho-mqtt` パッケージ（`pip3 install paho-mqtt`）にフォールバックします。
+`--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに送信します。`mosquitto_pub` または `paho-mqtt` のいずれかが必要です。`mosquitto_pub` が利用可能な場合は優先的に使用し、なければ `paho-mqtt` にフォールバックします。
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password \
   --mqtt-send 192.168.1.200 \
-  --mqtt-topic apcget/ups-living
+  --mqtt-topic apcget/my-ups    # トピック名は任意の文字列を指定可能
 ```
 
 | オプション | 説明 | デフォルト |
 |---|---|---|
 | `--mqtt-send` | MQTT ブローカーのアドレス | (なし) |
-| `--mqtt-topic` | MQTT トピック | apcget/ups |
+| `--mqtt-topic` | MQTT トピック（例: `apcget/ups-living`, `apcget/ups-office`） | apcget/ups |
 | `--mqtt-port` | MQTT ブローカーのポート | 1883 |
 | `--mqtt-user` | MQTT 認証ユーザ名 | (なし) |
 | `--mqtt-password` | MQTT 認証パスワード | (なし) |
 
 ### Home Assistant の設定
 
-`configuration.yaml` に MQTT センサーを追加:
+`configuration.yaml` に MQTT センサーを追加（トピック名は上記で指定したものに合わせてください）:
 
 ```yaml
 mqtt:
   sensor:
     - name: "UPS負荷"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"       # --mqtt-topic で指定した値に合わせる
       value_template: "{{ value_json.load }}"
       unit_of_measurement: "%"
     - name: "UPSバッテリー"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.battery }}"
       unit_of_measurement: "%"
     - name: "UPSランタイム"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.runtime }}"
       unit_of_measurement: "min"
     - name: "UPSステータス"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.status }}"
     - name: "UPS入力電圧"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.voltage }}"
       unit_of_measurement: "VAC"
     - name: "UPSバッテリー電圧"
-      state_topic: "apcget/ups-living"
+      state_topic: "apcget/my-ups"
       value_template: "{{ value_json.batteryvoltage }}"
       unit_of_measurement: "VDC"
 ```
