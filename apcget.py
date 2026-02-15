@@ -293,38 +293,36 @@ def main():
   2. 環境変数: APCGET_IP, APCGET_USERNAME, APCGET_PASSWORD
   3. 設定ファイル: ~/.apcget.conf
 
+  ※ ユーザ名・パスワードはPowerChuteで設定した認証情報です。
+
 設定ファイルの書式 (~/.apcget.conf):
   [powerchute]
   ip = 192.168.1.100
-  username = administrator
+  username = your_username
   password = your_password
 
-Zabbix連携 (トラッパー):
-  --zabbix-send ZABBIX_SERVER  全項目をzabbix_senderで一括送信
-  --zabbix-host HOSTNAME       Zabbix上のホスト名 (デフォルト: IPアドレス)
-  --zabbix-port PORT           Zabbixサーバーのポート (デフォルト: 10051)
-
-  Zabbix側に以下のトラッパーアイテムを作成してください:
-    apc.status          (文字列)  デバイスステータス
-    apc.load            (数値)    UPS負荷
-    apc.runtime         (数値)    ランタイム残り時間
-    apc.voltage         (数値)    入力電圧
-    apc.battery         (数値)    バッテリー充電
-    apc.batteryvoltage  (数値)    バッテリー電圧
-
 使用例:
-  # コマンドライン引数で指定
-  %(prog)s 192.168.1.100 admin password
+  # UPS負荷を取得（デフォルト）
+  %(prog)s 192.168.1.100 your_username your_password
 
-  # 環境変数で指定
-  export APCGET_PASSWORD='secret'
-  %(prog)s 192.168.1.100 admin
+  # 複数項目を取得
+  %(prog)s 192.168.1.100 your_username your_password --load --runtime --voltage
 
   # 設定ファイルのみで実行
   %(prog)s
 
-  # 全項目をZabbixに送信
-  %(prog)s --zabbix-send 192.168.1.1 --zabbix-host MyUPS
+  # 全項目をJSON形式で出力
+  %(prog)s --json
+
+  # MQTT送信（mosquitto_pub または paho-mqtt が必要）
+  %(prog)s --mqtt-send 192.168.1.200 --mqtt-topic apcget/my-ups
+
+  # Zabbix送信（zabbix_sender が必要）
+  %(prog)s --zabbix-send 10.0.0.1 --zabbix-host MyUPS
+
+  # MQTTとZabbixを同時に送信
+  %(prog)s --mqtt-send 192.168.1.200 --mqtt-topic apcget/my-ups \\
+           --zabbix-send 10.0.0.1 --zabbix-host MyUPS
 """,
     )
     parser.add_argument("ip", nargs="?", default=None, help="PowerChuteのIPアドレス")
