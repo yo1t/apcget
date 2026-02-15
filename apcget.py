@@ -7,6 +7,7 @@
 import argparse
 import configparser
 import http.cookiejar
+import json
 import os
 import re
 import ssl
@@ -279,6 +280,8 @@ Zabbix連携 (トラッパー):
     parser.add_argument("--voltage", action="store_true", help="入力電圧")
     parser.add_argument("--battery", action="store_true", help="バッテリー充電")
     parser.add_argument("--batteryvoltage", action="store_true", help="バッテリー電圧")
+    parser.add_argument("--json", action="store_true",
+                        help="全項目をJSON形式で出力")
     parser.add_argument("--zabbix-send", metavar="ZABBIX_SERVER",
                         help="Zabbixサーバーのアドレス（指定すると全項目をzabbix_senderで送信）")
     parser.add_argument("--zabbix-host", metavar="HOSTNAME",
@@ -302,8 +305,8 @@ Zabbix連携 (トラッパー):
         login(opener, opener_noredir, base_url, username, password)
         html = get_status_page(opener, base_url)
 
-        if args.zabbix_send:
-            # Zabbixモード: 全項目を取得して一括送信
+        if args.zabbix_send or args.json:
+            # 全項目取得モード（Zabbix送信 or JSON出力）
             all_values = {}
             for name, element_id in ITEMS.items():
                 value = extract_value(html, element_id)
@@ -316,8 +319,11 @@ Zabbix連携 (トラッパー):
                 print("Error: 取得できた項目がありません。", file=sys.stderr)
                 sys.exit(1)
 
-            zabbix_host = args.zabbix_host or ip
-            zabbix_send(args.zabbix_send, zabbix_host, all_values, args.zabbix_port)
+            if args.json:
+                print(json.dumps(all_values))
+            else:
+                zabbix_host = args.zabbix_host or ip
+                zabbix_send(args.zabbix_send, zabbix_host, all_values, args.zabbix_port)
         else:
             # 通常モード: 指定された項目を標準出力
             selected = [name for name in ITEMS if getattr(args, name)]
