@@ -19,18 +19,20 @@ No external packages required — runs on Python standard library only.
 ### Optional
 
 - `zabbix_sender` — required only when using the `--zabbix-send` option
+- `mosquitto_pub` — required only when using the `--mqtt-send` option
 
-### Installing zabbix_sender
+### Installing optional dependencies
 
 ```bash
-# RHEL / Amazon Linux
-sudo dnf install zabbix-sender
+# zabbix_sender
+sudo dnf install zabbix-sender      # RHEL / Amazon Linux
+sudo apt install zabbix-sender       # Ubuntu / Debian
+brew install zabbix                  # macOS (Homebrew)
 
-# Ubuntu / Debian
-sudo apt install zabbix-sender
-
-# macOS (Homebrew)
-brew install zabbix
+# mosquitto_pub
+sudo dnf install mosquitto           # RHEL / Amazon Linux
+sudo apt install mosquitto-clients   # Ubuntu / Debian
+brew install mosquitto               # macOS (Homebrew)
 ```
 
 ## Usage
@@ -71,6 +73,65 @@ python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltag
 | `--batteryvoltage` | Battery voltage (VDC) | 13.7 |
 
 Defaults to `--load` if no option is specified. Units (%, VAC, etc.) are not included in the output.
+
+### JSON Output
+
+The `--json` option outputs all items as JSON. Useful for integration with Home Assistant, scripts, etc.
+
+```bash
+python3 apcget.py 192.168.1.100 administrator password --json
+# Output: {"status": "Online", "load": "19.0", "runtime": "29", "voltage": "102.0", "battery": "100.0", "batteryvoltage": "13.7"}
+```
+
+## MQTT Integration
+
+The `--mqtt-send` option publishes all items as JSON to an MQTT broker via `mosquitto_pub`.
+
+```bash
+python3 apcget.py 192.168.1.100 administrator password \
+  --mqtt-send 192.168.1.200 \
+  --mqtt-topic apcget/ups-living
+```
+
+| Option | Description | Default |
+|---|---|---|
+| `--mqtt-send` | MQTT broker address | (none) |
+| `--mqtt-topic` | MQTT topic | apcget/ups |
+| `--mqtt-port` | MQTT broker port | 1883 |
+| `--mqtt-user` | MQTT username | (none) |
+| `--mqtt-password` | MQTT password | (none) |
+
+### Home Assistant Configuration
+
+Add MQTT sensors to `configuration.yaml`:
+
+```yaml
+mqtt:
+  sensor:
+    - name: "UPS Load"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.load }}"
+      unit_of_measurement: "%"
+    - name: "UPS Battery"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.battery }}"
+      unit_of_measurement: "%"
+    - name: "UPS Runtime"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.runtime }}"
+      unit_of_measurement: "min"
+    - name: "UPS Status"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.status }}"
+    - name: "UPS Voltage"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "VAC"
+    - name: "UPS Battery Voltage"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.batteryvoltage }}"
+      unit_of_measurement: "VDC"
+```
 
 ## Zabbix Integration
 

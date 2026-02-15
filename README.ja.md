@@ -19,18 +19,20 @@ https://github.com/yo1t/apcget
 ### オプション
 
 - `zabbix_sender` — `--zabbix-send` オプション使用時のみ必要
+- `mosquitto_pub` — `--mqtt-send` オプション使用時のみ必要
 
-### zabbix_sender のインストール
+### オプション依存パッケージのインストール
 
 ```bash
-# RHEL / Amazon Linux
-sudo dnf install zabbix-sender
+# zabbix_sender
+sudo dnf install zabbix-sender      # RHEL / Amazon Linux
+sudo apt install zabbix-sender       # Ubuntu / Debian
+brew install zabbix                  # macOS (Homebrew)
 
-# Ubuntu / Debian
-sudo apt install zabbix-sender
-
-# macOS (Homebrew)
-brew install zabbix
+# mosquitto_pub
+sudo dnf install mosquitto           # RHEL / Amazon Linux
+sudo apt install mosquitto-clients   # Ubuntu / Debian
+brew install mosquitto               # macOS (Homebrew)
 ```
 
 ## 使い方
@@ -71,6 +73,65 @@ python3 apcget.py 192.168.1.100 administrator password --load --runtime --voltag
 | `--batteryvoltage` | バッテリー電圧 (VDC) | 13.7 |
 
 オプション未指定の場合は `--load` がデフォルトです。単位（%、VAC 等）は出力に含まれません。
+
+### JSON 出力
+
+`--json` オプションで全項目を JSON 形式で出力します。Home Assistant やスクリプトとの連携に便利です。
+
+```bash
+python3 apcget.py 192.168.1.100 administrator password --json
+# 出力: {"status": "オンライン", "load": "19.0", "runtime": "29", "voltage": "102.0", "battery": "100.0", "batteryvoltage": "13.7"}
+```
+
+## MQTT 連携
+
+`--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに `mosquitto_pub` 経由で送信します。
+
+```bash
+python3 apcget.py 192.168.1.100 administrator password \
+  --mqtt-send 192.168.1.200 \
+  --mqtt-topic apcget/ups-living
+```
+
+| オプション | 説明 | デフォルト |
+|---|---|---|
+| `--mqtt-send` | MQTT ブローカーのアドレス | (なし) |
+| `--mqtt-topic` | MQTT トピック | apcget/ups |
+| `--mqtt-port` | MQTT ブローカーのポート | 1883 |
+| `--mqtt-user` | MQTT 認証ユーザ名 | (なし) |
+| `--mqtt-password` | MQTT 認証パスワード | (なし) |
+
+### Home Assistant の設定
+
+`configuration.yaml` に MQTT センサーを追加:
+
+```yaml
+mqtt:
+  sensor:
+    - name: "UPS負荷"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.load }}"
+      unit_of_measurement: "%"
+    - name: "UPSバッテリー"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.battery }}"
+      unit_of_measurement: "%"
+    - name: "UPSランタイム"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.runtime }}"
+      unit_of_measurement: "min"
+    - name: "UPSステータス"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.status }}"
+    - name: "UPS入力電圧"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.voltage }}"
+      unit_of_measurement: "VAC"
+    - name: "UPSバッテリー電圧"
+      state_topic: "apcget/ups-living"
+      value_template: "{{ value_json.batteryvoltage }}"
+      unit_of_measurement: "VDC"
+```
 
 ## Zabbix 連携
 
