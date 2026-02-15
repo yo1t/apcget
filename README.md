@@ -19,7 +19,7 @@ No external packages required — runs on Python standard library only.
 ### Optional
 
 - `zabbix_sender` — required only when using the `--zabbix-send` option
-- `mosquitto_pub` — required only when using the `--mqtt-send` option
+- `mosquitto_pub` or `paho-mqtt` — required only when using the `--mqtt-send` option (either one)
 
 ### Installing optional dependencies
 
@@ -85,7 +85,7 @@ python3 apcget.py 192.168.1.100 administrator password --json
 
 ## MQTT Integration
 
-The `--mqtt-send` option publishes all items as JSON to an MQTT broker via `mosquitto_pub`.
+The `--mqtt-send` option publishes all items as JSON to an MQTT broker via `mosquitto_pub`. If `mosquitto_pub` is not available, it falls back to the `paho-mqtt` Python package (`pip3 install paho-mqtt`).
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password \

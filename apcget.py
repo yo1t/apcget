@@ -215,31 +215,60 @@ def zabbix_send(zabbix_server, zabbix_host, all_values, zabbix_port=10051):
     print(result.stdout.strip(), file=sys.stderr)
 
 
+def _mqtt_publish_paho(mqtt_broker, mqtt_topic, payload, mqtt_port, mqtt_user, mqtt_password):
+    """paho-mqttライブラリでMQTT送信"""
+    try:
+        import paho.mqtt.publish as publish
+    except ImportError:
+        print("Error: mosquitto_pub コマンドも paho-mqtt パッケージも見つかりません。\n"
+              "いずれかをインストールしてください:\n"
+              "  mosquitto_pub: brew install mosquitto / sudo apt install mosquitto-clients\n"
+              "  paho-mqtt:     pip3 install paho-mqtt", file=sys.stderr)
+        sys.exit(1)
+
+    auth = None
+    if mqtt_user:
+        auth = {"username": mqtt_user}
+        if mqtt_password:
+            auth["password"] = mqtt_password
+
+    try:
+        publish.single(mqtt_topic, payload, hostname=mqtt_broker, port=mqtt_port, auth=auth)
+    except Exception as e:
+        print(f"Error: MQTT publish failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def mqtt_publish(mqtt_broker, mqtt_topic, all_values, mqtt_port=1883,
                  mqtt_user=None, mqtt_password=None):
-    """mosquitto_pubで全項目をMQTTブローカーに送信"""
+    """MQTT送信（mosquitto_pub優先、なければpaho-mqttにフォールバック）"""
     payload = json.dumps(all_values)
 
-    cmd = [
-        "mosquitto_pub",
-        "-h", mqtt_broker,
-        "-p", str(mqtt_port),
-        "-t", mqtt_topic,
-        "-m", payload,
-    ]
+    # mosquitto_pubが利用可能か確認
+    import shutil
+    if shutil.which("mosquitto_pub"):
+        cmd = [
+            "mosquitto_pub",
+            "-h", mqtt_broker,
+            "-p", str(mqtt_port),
+            "-t", mqtt_topic,
+            "-m", payload,
+        ]
 
-    if mqtt_user:
-        cmd.extend(["-u", mqtt_user])
-    if mqtt_password:
-        cmd.extend(["-P", mqtt_password])
+        if mqtt_user:
+            cmd.extend(["-u", mqtt_user])
+        if mqtt_password:
+            cmd.extend(["-P", mqtt_password])
 
-    result = subprocess.run(
-        cmd, capture_output=True, text=True
-    )
+        result = subprocess.run(
+            cmd, capture_output=True, text=True
+        )
 
-    if result.returncode != 0:
-        print(f"Error: mosquitto_pub failed: {result.stderr.strip()}", file=sys.stderr)
-        sys.exit(1)
+        if result.returncode != 0:
+            print(f"Error: mosquitto_pub failed: {result.stderr.strip()}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        _mqtt_publish_paho(mqtt_broker, mqtt_topic, payload, mqtt_port, mqtt_user, mqtt_password)
 
     print(f"MQTT published to {mqtt_topic}", file=sys.stderr)
 

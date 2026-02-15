@@ -19,7 +19,7 @@ https://github.com/yo1t/apcget
 ### オプション
 
 - `zabbix_sender` — `--zabbix-send` オプション使用時のみ必要
-- `mosquitto_pub` — `--mqtt-send` オプション使用時のみ必要
+- `mosquitto_pub` または `paho-mqtt` — `--mqtt-send` オプション使用時のみ必要（いずれか一方）
 
 ### オプション依存パッケージのインストール
 
@@ -85,7 +85,7 @@ python3 apcget.py 192.168.1.100 administrator password --json
 
 ## MQTT 連携
 
-`--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに `mosquitto_pub` 経由で送信します。
+`--mqtt-send` オプションで全項目を JSON 形式で MQTT ブローカーに送信します。`mosquitto_pub` コマンドを優先的に使用し、利用できない場合は `paho-mqtt` パッケージ（`pip3 install paho-mqtt`）にフォールバックします。
 
 ```bash
 python3 apcget.py 192.168.1.100 administrator password \
