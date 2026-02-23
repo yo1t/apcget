@@ -163,24 +163,19 @@
     code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
     .comment { color: var(--muted); }
 
-    .lang-switch {
-      position: fixed;
-      top: 16px;
-      right: 20px;
-      display: flex;
-      gap: 6px;
-    }
-    .lang-btn {
-      font-size: 0.78rem;
-      padding: 4px 10px;
-      border-radius: 4px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+    .lang-notice {
+      background: #161b22;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 0.85rem;
       color: var(--muted);
-      cursor: pointer;
-      text-decoration: none;
     }
-    .lang-btn.active { color: var(--accent); border-color: var(--accent); }
+    .lang-notice a {
+      color: var(--accent);
+      font-weight: 500;
+      margin-left: 6px;
+    }
 
     footer {
       text-align: center;
@@ -194,15 +189,14 @@
 
     @media (max-width: 600px) {
       header h1 { font-size: 1.8rem; }
-      .lang-switch { position: static; justify-content: center; padding: 12px; }
     }
   </style>
 </head>
 <body>
 
-<div class="lang-switch">
-  <a class="lang-btn" href="index.html">EN</a>
-  <a class="lang-btn active" href="index.ja.html">日本語</a>
+<div class="lang-notice">
+  🌐 This page is also available in English.
+  <a href="index.html">Read in English →</a>
 </div>
 
 <header>
