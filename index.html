@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>apcget — APC PowerChute UPS Status Tool</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --orange: #d29922;
+      --tag-bg: #1f2937;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 48px 24px 40px;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    header h1 span { color: var(--accent); }
+    header p {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 20px;
+    }
+    .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
+    .badges img { height: 20px; }
+
+    .links {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); background: #1c2230; text-decoration: none; color: var(--accent-hover); }
+    .btn.primary { background: #21262d; border-color: #8b949e; }
+    .btn.release { border-color: var(--green); color: var(--green); }
+    .btn.release:hover { background: #0d1f14; color: #56d364; }
+    .btn svg { flex-shrink: 0; }
+
+    main { max-width: 860px; margin: 0 auto; padding: 48px 24px; }
+
+    section { margin-bottom: 48px; }
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2 .icon { font-size: 1rem; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+    .card p { font-size: 0.85rem; color: var(--muted); }
+
+    .release-entry {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 12px;
+    }
+    .release-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .release-tag {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .release-label {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(63, 185, 80, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(63, 185, 80, 0.4);
+    }
+    .release-date {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .release-body {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .release-body ul { padding-left: 20px; }
+    .release-body li { margin-bottom: 4px; }
+    .release-link { font-size: 0.85rem; margin-top: 12px; }
+
+    .issue-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .issue-row:last-child { border-bottom: none; }
+    .issue-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .issue-dot.open { background: var(--green); }
+    .issue-dot.closed { background: var(--muted); }
+    .issue-empty { color: var(--muted); font-size: 0.9rem; padding: 12px 0; }
+
+    .quick-start {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+    }
+    pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+    .comment { color: var(--muted); }
+
+    .lang-switch {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      display: flex;
+      gap: 6px;
+    }
+    .lang-btn {
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .lang-btn.active { color: var(--accent); border-color: var(--accent); }
+
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.8rem; }
+      .lang-switch { position: static; justify-content: center; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="lang-switch">
+  <a class="lang-btn active" href="index.html">EN</a>
+  <a class="lang-btn" href="index.ja.html">日本語</a>
+</div>
+
+<header>
+  <h1><span>apcget</span></h1>
+  <p>Retrieve UPS status from APC PowerChute Serial Shutdown for Business — CLI, JSON, MQTT, and Zabbix integration.</p>
+  <div class="badges">
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+    <a href="https://github.com/yo1t/apcget/releases/tag/v0.1.0"><img src="https://img.shields.io/github/v/release/yo1t/apcget?label=release&color=3fb950" alt="Latest release"></a>
+    <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.6%2B-blue" alt="Python 3.6+"></a>
+  </div>
+  <div class="links">
+    <a class="btn primary" href="https://github.com/yo1t/apcget">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Source Code
+    </a>
+    <a class="btn release" href="https://github.com/yo1t/apcget/releases">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.878.392a1.75 1.75 0 00-1.756 0l-5.25 3.045A1.75 1.75 0 001 4.951v6.098c0 .624.332 1.2.872 1.514l5.25 3.045a1.75 1.75 0 001.756 0l5.25-3.045c.54-.313.872-.89.872-1.514V4.951c0-.624-.332-1.2-.872-1.514L8.878.392zM7.875 1.69a.25.25 0 01.25 0l4.63 2.685L8 7.133 3.245 4.375l4.63-2.685zM2.5 5.677v5.372c0 .09.047.171.125.216l4.625 2.683V8.432L2.5 5.677zm6.25 8.271l4.625-2.683a.25.25 0 00.125-.216V5.677L8.75 8.432v5.516z"/></svg>
+      Releases
+    </a>
+    <a class="btn" href="https://github.com/yo1t/apcget/issues">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/><path fill-rule="evenodd" d="M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"/></svg>
+      Issues
+    </a>
+    <a class="btn" href="https://github.com/yo1t/apcget/blob/main/README.md">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0114.25 16H1.75A1.75 1.75 0 010 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V1.75a.25.25 0 00-.25-.25H1.75zM3.5 3.75a.75.75 0 01.75-.75h7a.75.75 0 010 1.5h-7a.75.75 0 01-.75-.75zm.75 2.75a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-4.5z"/></svg>
+      README
+    </a>
+  </div>
+</header>
+
+<main>
+
+  <!-- Features -->
+  <section id="features">
+    <h2><span class="icon">✦</span> Features</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>CLI Output</h3>
+        <p>Print UPS load, battery, runtime, voltage and status directly to stdout — ideal for scripts and cron jobs.</p>
+      </div>
+      <div class="card">
+        <h3>JSON Output</h3>
+        <p>Output all metrics as a single JSON object for easy integration with Home Assistant and other automation platforms.</p>
+      </div>
+      <div class="card">
+        <h3>MQTT Publishing</h3>
+        <p>Publish metrics to any MQTT broker. Works with <code>mosquitto_pub</code> or <code>paho-mqtt</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Zabbix Integration</h3>
+        <p>Send all 6 metrics at once via <code>zabbix_sender</code> to a Zabbix trapper item.</p>
+      </div>
+      <div class="card">
+        <h3>Zero Dependencies</h3>
+        <p>Core functionality uses Python standard library only. Optional features require MQTT or Zabbix tools.</p>
+      </div>
+      <div class="card">
+        <h3>Credential Management</h3>
+        <p>Supports CLI args, environment variables, and a config file — no plain-text passwords in shell history.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section id="quickstart">
+    <h2><span class="icon">▶</span> Quick Start</h2>
+    <div class="quick-start">
+      <p style="font-size:0.9rem; color:var(--muted); margin-bottom:4px;">Download and run — no installation required:</p>
+      <pre><code><span class="comment"># Download</span>
+curl -O https://raw.githubusercontent.com/yo1t/apcget/main/apcget.py
+
+<span class="comment"># Basic usage (returns UPS load %)</span>
+python3 apcget.py 192.168.1.100 username password
+
+<span class="comment"># All metrics as JSON</span>
+python3 apcget.py 192.168.1.100 username password --json
+
+<span class="comment"># Publish to MQTT</span>
+python3 apcget.py 192.168.1.100 username password \
+  --mqtt-send 192.168.1.200 --mqtt-topic apcget/ups</code></pre>
+    </div>
+  </section>
+
+  <!-- Release History -->
+  <section id="releases">
+    <h2><span class="icon">◈</span> Release History</h2>
+
+    <div class="release-entry">
+      <div class="release-header">
+        <span class="release-tag">v0.1.0</span>
+        <span class="release-label">Latest</span>
+        <span class="release-date">2026-02-15</span>
+      </div>
+      <div class="release-body">
+        <p style="margin-bottom:8px;">Initial release of apcget.</p>
+        <ul>
+          <li>Retrieve UPS status from APC PowerChute via HTTP scraping</li>
+          <li>JSON output support (<code>--json</code>)</li>
+          <li>MQTT publishing support (<code>--mqtt-send</code>)</li>
+          <li>Zabbix sender integration (<code>--zabbix-send</code>)</li>
+          <li>Multi-language support (Japanese / English)</li>
+          <li>Config file and environment variable credential management</li>
+        </ul>
+      </div>
+      <div class="release-link">
+        <a href="https://github.com/yo1t/apcget/releases/tag/v0.1.0">View on GitHub →</a>
+      </div>
+    </div>
+
+    <p style="font-size:0.85rem; color:var(--muted); margin-top:8px;">
+      All releases: <a href="https://github.com/yo1t/apcget/releases">github.com/yo1t/apcget/releases</a>
+    </p>
+  </section>
+
+  <!-- Issues -->
+  <section id="issues">
+    <h2><span class="icon">◎</span> Issues &amp; Feedback</h2>
+    <div class="quick-start">
+      <p style="font-size:0.9rem; color:var(--muted); margin-bottom:16px;">
+        Found a bug or have a feature request? Open an issue on GitHub.
+      </p>
+      <div class="issue-empty">No open issues at this time.</div>
+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="btn" href="https://github.com/yo1t/apcget/issues">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/><path fill-rule="evenodd" d="M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"/></svg>
+          View All Issues
+        </a>
+        <a class="btn" href="https://github.com/yo1t/apcget/issues/new">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z"/></svg>
+          New Issue
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Links -->
+  <section id="links">
+    <h2><span class="icon">⬡</span> Links</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3><a href="https://github.com/yo1t/apcget">GitHub Repository</a></h3>
+        <p>Source code, issues, pull requests, and contribution guidelines.</p>
+      </div>
+      <div class="card">
+        <h3><a href="https://github.com/yo1t/apcget/releases">Releases</a></h3>
+        <p>Download stable releases and view changelogs.</p>
+      </div>
+      <div class="card">
+        <h3><a href="https://github.com/yo1t/apcget/blob/main/README.md">README (EN)</a></h3>
+        <p>Full documentation: usage, options, credential management, integration guides.</p>
+      </div>
+      <div class="card">
+        <h3><a href="https://github.com/yo1t/apcget/blob/main/README.ja.md">README (日本語)</a></h3>
+        <p>日本語版ドキュメント：使用方法、オプション、認証管理、連携ガイド。</p>
+      </div>
+      <div class="card">
+        <h3><a href="https://raw.githubusercontent.com/yo1t/apcget/main/apcget.py">apcget.py (raw)</a></h3>
+        <p>Direct link to the script — use with <code>curl</code> or <code>wget</code> to download.</p>
+      </div>
+      <div class="card">
+        <h3><a href="https://github.com/yo1t/apcget/blob/main/LICENSE">License (MIT)</a></h3>
+        <p>Free to use, modify, and distribute under the MIT License.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/yo1t/apcget">apcget</a> is released under the
+    <a href="https://github.com/yo1t/apcget/blob/main/LICENSE">MIT License</a>.
+    &nbsp;·&nbsp;
+    Not affiliated with or endorsed by Schneider Electric / APC.
+  </p>
+</footer>
+
+</body>
+</html>
