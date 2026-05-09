@@ -40,13 +40,9 @@ APC PowerChute Serial Shutdown for Business does not provide an SNMP interface, 
          │
          ▼
 ┌──────────────────┐
+│ Get status page   │  ← Parse /status page HTML
 │ Detect locale     │  ← Check <html lang="...">
 │ Switch to English │  ← POST /setLocale if non-English
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Get status page   │  ← Parse /status page HTML
 │ Extract values    │  ← Extract by HTML element ID
 └────────┬─────────┘
          │
@@ -130,6 +126,7 @@ apcget.py          ← Single-file design (no external module dependencies)
   - `opener`: Follows redirects (for normal page retrieval)
   - `opener_noredir`: Does not follow redirects (for login redirect detection)
 - Cookies are automatically managed via `CookieJar` (session persistence)
+- Both openers send `Connection: close` to force per-request connection teardown, preventing connection accumulation on the PowerChute Tomcat side
 
 **Design decision**: SSL verification is disabled because PowerChute uses self-signed certificates.
 
@@ -142,7 +139,8 @@ apcget.py          ← Single-file design (no external module dependencies)
 
 #### `_is_already_logged_on(html) → bool`
 
-- Detects the "already logged on" condition using the `alreadyLoggedOn` HTML element ID combined with message text matching (English or Japanese)
+- Detects the "already logged on" condition by checking for the presence of the `alreadyLoggedOn` HTML element ID
+- Language-independent: relies solely on the element ID, not on display text
 
 ### 4.4 Locale Control
 
@@ -154,15 +152,11 @@ apcget.py          ← Single-file design (no external module dependencies)
 
 - Sends a POST request to the PowerChute `/setLocale` endpoint
 - Parameters: `newLocale` (locale code), `targetURL` (redirect destination)
-
-#### `ensure_english(opener, base_url) → str | None`
-
-- Detects the current language of the status page and switches to English if not already English
-- Returns: the original locale code (if switched), `None` (if already English)
+- Returns the HTML of the redirected `/status` page (in the newly set locale)
 
 #### `restore_locale(opener, base_url, original_locale)`
 
-- Restores the locale recorded by `ensure_english`
+- Restores the original locale if it was changed during status retrieval
 - Exceptions are silently ignored (best-effort cleanup before logoff)
 
 **Design decision**: Status values (especially `status`) are language-dependent (e.g., "On Line" vs "オンライン"). To ensure consistent output, data is always retrieved in English, and the original language is restored after processing.
@@ -196,9 +190,11 @@ apcget.py          ← Single-file design (no external module dependencies)
 
 ### 4.6 Data Retrieval
 
-#### `get_status_page(opener, base_url) → str`
+#### `get_status_page(opener, base_url) → (html: str, original_locale: str | None)`
 
-- Retrieves the HTML of the `/status` page
+- Retrieves the `/status` page HTML
+- Detects the current display language; if non-English, calls `_set_locale` to switch to English and uses the returned HTML directly (avoids an extra round-trip)
+- Returns `original_locale` (the pre-switch locale code, or `None` if already English) for later restoration
 - Exits with error if redirected to the login page
 
 #### `extract_value(html, element_id) → str | None`
@@ -311,6 +307,8 @@ Defaults to `--load` if no item is specified.
 | Situation | Action | Exit Code |
 |---|---|---|
 | Credentials not specified | Error output to stderr | 1 |
+| Invalid IP address / hostname format | Error output to stderr | 1 |
+| Network connection failure (timeout, etc.) | Error output to stderr | 1 |
 | Login failure | Error output to stderr | 1 |
 | Invalid session | Error output to stderr | 1 |
 | Value retrieval failed (normal mode) | Error output to stderr | 1 |
@@ -339,14 +337,16 @@ Both silently ignore exceptions, ensuring execution even during error conditions
 
 ### 8.2 Input Sanitization
 
-- Zabbix hostname: Validated with the pattern `^[\w.\-]+$` (prevents command injection)
-- Zabbix values: Newline characters removed
+- IP address / hostname (`ip`, `--zabbix-send`): Validated with `_validate_host()` using `^[\w.\-\[\]:]+$` (prevents URL injection / SSRF)
+- Zabbix hostname: Further validated with `_sanitize_zabbix_host()` using `^[\w.\-]+$` (prevents command injection)
+- Zabbix values: Newline characters removed; values with spaces (e.g., `"On Line"`) are double-quoted in the stdin format
 - External command invocation: Uses `subprocess.run` with list-form arguments (prevents shell injection)
 
 ### 8.3 Credential Protection
 
 - Config file-based credential management is recommended (command-line arguments are visible in process listings)
 - Environment variable specification is also supported
+- When using `--mqtt-password` with `mosquitto_pub`, the password is visible in the process list (`ps aux`). Using `paho-mqtt` avoids this exposure
 
 ---
 
@@ -388,7 +388,7 @@ The following detection logic uses HTML element IDs and is not dependent on disp
 | Detection | Method | Rationale |
 |---|---|---|
 | Status page detection | Presence of `value_DeviceStatus` | HTML element IDs are language-invariant |
-| Existing session detection | Presence of `alreadyLoggedOn` | HTML element IDs are language-invariant |
+| Existing session detection | Presence of `alreadyLoggedOn` (element ID only) | HTML element IDs are language-invariant; no display text matching |
 | Value extraction | Regex on `id="value_..."` | HTML element IDs are language-invariant |
 | Login button | Dynamic read of `name="login"` value attribute | Display value is language-dependent but dynamically read |
 

@@ -220,6 +220,7 @@ python3 apcget.py
 ### Security Notes
 
 - Passing passwords as command-line arguments exposes them via `ps` and shell history. Use a config file or environment variables instead
+- When using `--mqtt-password` with `mosquitto_pub`, the password is visible in the process list (`ps aux`). Install `paho-mqtt` to avoid this exposure
 - SSL certificate verification is disabled because PowerChute uses a self-signed certificate
 - Set `chmod 600` on config files to prevent other users from reading them
 

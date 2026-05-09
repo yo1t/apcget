@@ -10,9 +10,11 @@ import http.cookiejar
 import json
 import os
 import re
+import socket
 import ssl
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -87,9 +89,11 @@ def create_openers():
             return None
 
     opener = urllib.request.build_opener(https_handler, cookie_handler)
+    opener.addheaders = [("User-Agent", "apcget"), ("Connection", "close")]
     opener_noredir = urllib.request.build_opener(
         urllib.request.HTTPSHandler(context=ctx), cookie_handler, NoRedirectHandler
     )
+    opener_noredir.addheaders = [("User-Agent", "apcget"), ("Connection", "close")]
     return opener, opener_noredir
 
 
@@ -100,7 +104,7 @@ def _is_status_page(html):
 
 def _is_already_logged_on(html):
     """「既にログオン中」メッセージの判定（言語非依存）"""
-    return "alreadyLoggedOn" in html and ("already logged" in html.lower() or "既にログオン" in html)
+    return "alreadyLoggedOn" in html
 
 
 def _detect_locale(html):
@@ -127,7 +131,7 @@ def login(opener, opener_noredir, base_url, username, password):
     html = resp.read().decode("utf-8", errors="replace")
 
     if _is_already_logged_on(html):
-        opener.open(f"{base_url}/logoff", timeout=HTTP_TIMEOUT)
+        opener.open(f"{base_url}/logoff", timeout=HTTP_TIMEOUT).read()
         resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
         html = resp.read().decode("utf-8", errors="replace")
 
@@ -163,18 +167,6 @@ def login(opener, opener_noredir, base_url, username, password):
             sys.exit(1)
 
 
-def ensure_english(opener, base_url):
-    """表示言語が英語でなければ英語に切り替え、元のロケールを返す"""
-    resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
-    html = resp.read().decode("utf-8", errors="replace")
-    current_locale = _detect_locale(html)
-
-    if current_locale and current_locale != "en":
-        _set_locale(opener, base_url, "en")
-        return current_locale
-    return None
-
-
 def restore_locale(opener, base_url, original_locale):
     """元の表示言語に戻す"""
     if original_locale:
@@ -185,7 +177,7 @@ def restore_locale(opener, base_url, original_locale):
 
 
 def get_status_page(opener, base_url):
-    """statusページのHTMLを取得"""
+    """statusページのHTMLを英語で取得し、元のロケールを返す"""
     resp = opener.open(f"{base_url}/status", timeout=HTTP_TIMEOUT)
     html = resp.read().decode("utf-8", errors="replace")
 
@@ -193,7 +185,11 @@ def get_status_page(opener, base_url):
         print("Error: セッションが無効です。ログインに失敗した可能性があります。", file=sys.stderr)
         sys.exit(1)
 
-    return html
+    current_locale = _detect_locale(html)
+    if current_locale and current_locale != "en":
+        html = _set_locale(opener, base_url, "en")
+        return html, current_locale
+    return html, None
 
 
 def extract_value(html, element_id):
@@ -223,6 +219,14 @@ def _sanitize_zabbix_value(value):
     return value
 
 
+def _validate_host(value, label):
+    """IPアドレスまたはホスト名の形式を検証（URLインジェクション防止）"""
+    if not re.match(r'^[\w.\-\[\]:]+$', value):
+        print(f"Error: 不正な{label}です: {value}", file=sys.stderr)
+        sys.exit(1)
+    return value
+
+
 def _sanitize_zabbix_host(hostname):
     """zabbix_senderに渡すホスト名を検証"""
     if not re.match(r'^[\w.\-]+$', hostname):
@@ -233,6 +237,7 @@ def _sanitize_zabbix_host(hostname):
 
 def zabbix_send(zabbix_server, zabbix_host, all_values, zabbix_port=10051):
     """zabbix_senderで全項目を一括送信"""
+    _validate_host(zabbix_server, "Zabbixサーバーアドレス")
     zabbix_host = _sanitize_zabbix_host(zabbix_host)
     lines = []
     for name, value in all_values.items():
@@ -241,7 +246,7 @@ def zabbix_send(zabbix_server, zabbix_host, all_values, zabbix_port=10051):
         if sanitized is None:
             print(f"Warning: {name} の値が空です。スキップします。", file=sys.stderr)
             continue
-        lines.append(f"{zabbix_host} {key} {sanitized}")
+        lines.append(f"{zabbix_host} {key} \"{sanitized}\"")
 
     if not lines:
         print("Error: 送信可能な項目がありません。", file=sys.stderr)
@@ -417,14 +422,15 @@ def main():
     username = resolve_credential(args.username, "APCGET_USERNAME", config.get("username"), "ユーザ名")
     password = resolve_credential(args.password, "APCGET_PASSWORD", config.get("password"), "パスワード")
 
+    _validate_host(ip, "IPアドレス/ホスト名")
     base_url = f"https://{ip}:6547"
+    socket.setdefaulttimeout(HTTP_TIMEOUT)
     opener, opener_noredir = create_openers()
 
     original_locale = None
     try:
         login(opener, opener_noredir, base_url, username, password)
-        original_locale = ensure_english(opener, base_url)
-        html = get_status_page(opener, base_url)
+        html, original_locale = get_status_page(opener, base_url)
 
         if args.zabbix_send or args.mqtt_send or args.json:
             # 全項目取得モード（Zabbix送信 / MQTT送信 / JSON出力）
@@ -463,6 +469,9 @@ def main():
                 values.append(value)
 
             print(" ".join(values))
+    except (urllib.error.URLError, socket.timeout, OSError) as e:
+        print(f"Error: {ip}:6547 への接続に失敗しました: {e}", file=sys.stderr)
+        sys.exit(1)
     finally:
         restore_locale(opener, base_url, original_locale)
         logoff(opener, base_url)
